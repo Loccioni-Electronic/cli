@@ -31,27 +31,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CLI_BUFFER_SIZE              50
 #define CLI_MAX_EXTERNAL_MODULE      20
 #define CLI_MAX_CHARS_PER_LINE       60
 #define CLI_MAX_CMD_CHAR_LINE        15
+#define CLI_MAX_STATUS_CHAR_LINE     10
+#define CLI_MAX_PARAM                10
 
-static char Cli_buffer[CLI_BUFFER_SIZE];
+static char Cli_buffer[LOCCIONI_CLI_BUFFER_SIZE];
 static uint8_t Cli_bufferIndex = 0;
 
-//static void Cli_functionHelp(void* cmd, char* params);
-//static void Cli_functionVersion(void* cmd, char* params);
-//static void Cli_functionStatus(void* cmd, char* params);
+static char Cli_params[CLI_MAX_PARAM][LOCCIONI_CLI_BUFFER_SIZE];
+static uint8_t Cli_numberOfParams = 0;
 
-//static void Cli_functionHelp(int argc, char* argv[]);
-//static void Cli_functionVersion(int argc, char* argv[]);
-//static void Cli_functionStatus(int argc, char* argv[]);
-
-static void Cli_functionHelp(void* device, int argc, char* argv[]);
-static void Cli_functionVersion(void* device, int argc, char* argv[]);
-static void Cli_functionStatus(void* device, int argc, char* argv[]);
-
-static void Cli_parseParamsString();
+static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
+static void Cli_functionVersion(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
+static void Cli_functionStatus(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
 
 const Cli_Command Cli_commandTable[] =
 {
@@ -94,8 +88,6 @@ static void Cli_getCommand (char* name, Cli_Command* cmdFound)
             cmdFound->description = Cli_commandTable[i].description;
             cmdFound->cmdFunction = Cli_commandTable[i].cmdFunction;
             cmdFound->device      = Cli_commandTable[i].device;
-
-//            cmdFound->params = Cli_commandTable[i].params;
             return;
         }
     }
@@ -108,8 +100,6 @@ static void Cli_getCommand (char* name, Cli_Command* cmdFound)
             cmdFound->description = Cli_externalCommandTable[i].description;
             cmdFound->cmdFunction = Cli_externalCommandTable[i].cmdFunction;
             cmdFound->device      = Cli_externalCommandTable[i].device;
-
-//            cmdFound->params = Cli_externalCommandTable[i].params;
             return;
         }
     }
@@ -121,6 +111,7 @@ static void Cli_prompt(void)
 {
     Uart_sendString(LOCCIONI_CLI_DEV, "\r\n$> ");
     memset(Cli_buffer, 0, sizeof(Cli_buffer));
+    memset(Cli_params, 0, sizeof(Cli_params));
     Cli_bufferIndex = 0;
 }
 
@@ -141,8 +132,7 @@ static void Cli_sayHello (void)
     Uart_sendString(LOCCIONI_CLI_DEV, "\r\n");
 }
 
-//static void Cli_functionHelp(void* cmd, char* params)
-static void Cli_functionHelp(void* device, int argc, char* argv[])
+static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
     uint8_t i,j;
     uint8_t blank = 0;
@@ -165,25 +155,89 @@ static void Cli_functionHelp(void* device, int argc, char* argv[])
         for (j=0; j < blank; ++j) Uart_putChar(LOCCIONI_CLI_DEV,' ');
         Uart_putChar(LOCCIONI_CLI_DEV,';');
         Uart_sendStringln(LOCCIONI_CLI_DEV,Cli_externalCommandTable[i].description);
+
+        /* Print help menu of the device! */
+        Cli_externalCommandTable[i].cmdFunction(Cli_externalCommandTable[i].device,1,0);
     }
 }
 
-//static void Cli_functionVersion(void* cmd, char* params)
-static void Cli_functionVersion(void* device, int argc, char* argv[])
+static void Cli_functionVersion(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
-    Uart_sendString(LOCCIONI_CLI_DEV,   "Board Version    : ");
+    uint8_t i,blank = 0;
+
+    /* Board version */
+    blank = CLI_MAX_STATUS_CHAR_LINE - strlen("Board");
+    Uart_sendString(LOCCIONI_CLI_DEV,"Board");
+    for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
+    Uart_putChar(LOCCIONI_CLI_DEV,':');
     Uart_sendStringln(LOCCIONI_CLI_DEV, PCB_VERSION_STRING);
-    Uart_sendString(LOCCIONI_CLI_DEV,   "Firmware Version : ");
+
+    blank = CLI_MAX_STATUS_CHAR_LINE - strlen("Firmware");
+    Uart_sendString(LOCCIONI_CLI_DEV,"Firmware");
+    for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
+    Uart_putChar(LOCCIONI_CLI_DEV,':');
     Uart_sendStringln(LOCCIONI_CLI_DEV, FW_VERSION_STRING);
+
 //    Uart_sendString(LOCCIONI_CLI_DEV,   "Firmware Date    : ");
 //    Uart_sendStringln(LOCCIONI_CLI_DEV, FW_TIME_VERSION);
+    Time_unixtimeToString(1442565848,0);
 }
 
-//static void Cli_functionStatus(void* cmd, char* params)
-static void Cli_functionStatus(void* device, int argc, char* argv[])
+static void Cli_functionStatus(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
+    uint8_t i;
 
-/* TODO */
+    for (i=0; i<CLI_MAX_CHARS_PER_LINE; ++i) Uart_putChar(LOCCIONI_CLI_DEV,'*');
+    Uart_sendString(LOCCIONI_CLI_DEV, "\r\n");
+    Uart_sendStringln(LOCCIONI_CLI_DEV, "System Status");
+    for (i=0; i<CLI_MAX_CHARS_PER_LINE; ++i) Uart_putChar(LOCCIONI_CLI_DEV,'*');
+    Uart_sendString(LOCCIONI_CLI_DEV, "\r\n");
+
+    Cli_functionVersion(0,0,0);
+}
+
+static void Cli_parseParams(void)
+{
+    uint8_t i = 0; /* counter for the buffer */
+    uint8_t j = 0; /* counter for each param */
+    bool isStringOpen = FALSE; /* to know if double quote is for open or close */
+    Cli_numberOfParams = 0;
+
+
+    for (i = 0; i < (Cli_bufferIndex -2); ++i)
+    {
+        if ((Cli_buffer[i] != ' ') && (Cli_buffer[i] != '\"'))
+        {
+            Cli_params[Cli_numberOfParams][j++] = Cli_buffer[i];
+        }
+        else if ((Cli_buffer[i] == '\"') && (isStringOpen == FALSE))
+        {
+            isStringOpen = TRUE;
+        }
+        else if ((Cli_buffer[i] == '\"') && (isStringOpen == TRUE))
+        {
+            isStringOpen = FALSE;
+            Cli_params[Cli_numberOfParams][j] = '\0';
+            j = 0; /* Reset param counter */
+            Cli_numberOfParams++; /* update number of params */
+        }
+        else if ((Cli_buffer[i] == ' ') && (isStringOpen == TRUE))
+        {
+            Cli_params[Cli_numberOfParams][j++] = Cli_buffer[i];
+        }
+        else if (((Cli_buffer[i] == ' ') && (Cli_buffer[i-1] == ' ')) ||
+                 ((Cli_buffer[i] == ' ') && (Cli_buffer[i-1] == '\"')))
+        {
+            continue;
+        }
+        else
+        {
+            Cli_params[Cli_numberOfParams][j] = '\0';
+            j = 0; /* Reset param counter */
+            Cli_numberOfParams++; /* update number of params */
+        }
+    }
+    Cli_numberOfParams++; /* The last param that can not see! */
 }
 
 void Cli_check(void)
@@ -213,8 +267,8 @@ void Cli_check(void)
 
 		if (cmd.name != NULL)
 		{
-		    //          cmd.cmdFunction(&cmd, Cli_buffer + strlen(cmd.name));
-		    cmd.cmdFunction(cmd.device,0,0);
+		    Cli_parseParams();
+		    cmd.cmdFunction(cmd.device,Cli_numberOfParams,Cli_params);
 		}
 		else
 		{
@@ -224,7 +278,7 @@ void Cli_check(void)
 		Cli_bufferIndex = 0;
         Cli_prompt();
 	}
-	else if(Cli_bufferIndex > CLI_BUFFER_SIZE-1)
+	else if(Cli_bufferIndex > LOCCIONI_CLI_BUFFER_SIZE-1)
 	{
 	    Cli_bufferIndex = 0;
 		Cli_prompt();
@@ -246,8 +300,7 @@ void Cli_init(void)
 void Cli_addModule(char* name,
                    char* description,
                    void* device,
-                   void (*cmdFunction)(void* device, int argc, char* argv[]))
-//void Cli_addModule (char* name, char* description, void (*cmdFunction)(void *cmd, char *cmdLine))
+                   void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]))
 {
     if (Cli_externalCommandIndex < CLI_MAX_EXTERNAL_MODULE)
     {
@@ -256,8 +309,20 @@ void Cli_addModule(char* name,
 
         Cli_externalCommandTable[Cli_externalCommandIndex].device = device;
         Cli_externalCommandTable[Cli_externalCommandIndex].cmdFunction = cmdFunction;
-//        Cli_externalCommandTable[Cli_externalCommandIndex].params = "";
 
         Cli_externalCommandIndex++;
     }
+}
+
+void Cli_sendHelpString(char* name, char* description)
+{
+    uint8_t i;
+    uint8_t blank;
+
+    blank = CLI_MAX_CMD_CHAR_LINE - strlen(name) - 2;
+    Uart_sendString(LOCCIONI_CLI_DEV,"  "); /* Blank space before command */
+    Uart_sendString(LOCCIONI_CLI_DEV,name);
+    for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
+    Uart_putChar(LOCCIONI_CLI_DEV,';');
+    Uart_sendStringln(LOCCIONI_CLI_DEV,description);
 }

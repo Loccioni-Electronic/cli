@@ -37,13 +37,21 @@
  */
 #include "board.h"
 
+#define LOCCIONI_CLI_LIBRARY_VERSION     "1.0"
+#define LOCCIONI_CLI_LIBRARY_VERSION_M   1
+#define LOCCIONI_CLI_LIBRARY_VERSION_m   0
+#define LOCCIONI_CLI_LIBRARY_TIME        0
+
+/* Public define */
+#define LOCCIONI_CLI_BUFFER_SIZE         50
+
+
 typedef struct
 {
     char *name;
     char *description;
-//    char *params;
     void *device;
-    void (*cmdFunction)(void* device, int argc, char* argv[]);
+    void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
 } Cli_Command;
 
 void Cli_init(void);
@@ -52,13 +60,9 @@ void Cli_check(void);
 void Cli_addModule(char* name,
                    char* description,
                    void* device,
-                   void (*cmdFunction)(void* device, int argc, char* argv[]));
+                   void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]));
+
 void Cli_sendHelpString(char* name, char* description);
-
-
-//extern void cliFuncStatus(void *cmd, char *cmdLine);
-//extern void cliFuncHelp(void *cmd, char *cmdLine);
-//extern void cliFuncVer(void *cmd, char *cmdLine);
-
+void Cli_sendStatusString(char* name, char* value);
 
 #endif /* __CLI_LOCCIONI_H */
