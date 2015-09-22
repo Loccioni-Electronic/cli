@@ -164,23 +164,26 @@ static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BU
 static void Cli_functionVersion(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
     uint8_t i,blank = 0;
+    char dateString[26];
 
     /* Board version */
     blank = CLI_MAX_STATUS_CHAR_LINE - strlen("Board");
     Uart_sendString(LOCCIONI_CLI_DEV,"Board");
     for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
     Uart_putChar(LOCCIONI_CLI_DEV,':');
+    Uart_putChar(LOCCIONI_CLI_DEV,' ');
     Uart_sendStringln(LOCCIONI_CLI_DEV, PCB_VERSION_STRING);
 
+    /* Firmware version */
+    Time_unixtimeToString(FW_TIME_VERSION,dateString);
     blank = CLI_MAX_STATUS_CHAR_LINE - strlen("Firmware");
     Uart_sendString(LOCCIONI_CLI_DEV,"Firmware");
     for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
     Uart_putChar(LOCCIONI_CLI_DEV,':');
-    Uart_sendStringln(LOCCIONI_CLI_DEV, FW_VERSION_STRING);
-
-//    Uart_sendString(LOCCIONI_CLI_DEV,   "Firmware Date    : ");
-//    Uart_sendStringln(LOCCIONI_CLI_DEV, FW_TIME_VERSION);
-    Time_unixtimeToString(1442565848,0);
+    Uart_putChar(LOCCIONI_CLI_DEV,' ');
+    Uart_sendString(LOCCIONI_CLI_DEV, FW_VERSION_STRING);
+    Uart_sendString(LOCCIONI_CLI_DEV, " of ");
+    Uart_sendStringln(LOCCIONI_CLI_DEV,dateString);
 }
 
 static void Cli_functionStatus(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
