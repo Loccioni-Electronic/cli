@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (C) 2015 AEA s.r.l. Loccioni Group - Elctronic Design Dept.
+ * Copyright (C) 2015-2016 AEA s.r.l. Loccioni Group - Elctronic Design Dept.
  *
  * Authors:
  *  Marco Giammarini <m.giammarini@loccioni.com>
@@ -37,9 +37,9 @@
  */
 #include "board.h"
 
-#define LOCCIONI_CLI_LIBRARY_VERSION     "1.0"
+#define LOCCIONI_CLI_LIBRARY_VERSION     "1.1"
 #define LOCCIONI_CLI_LIBRARY_VERSION_M   1
-#define LOCCIONI_CLI_LIBRARY_VERSION_m   0
+#define LOCCIONI_CLI_LIBRARY_VERSION_m   1
 #define LOCCIONI_CLI_LIBRARY_TIME        0
 
 /* Public define */

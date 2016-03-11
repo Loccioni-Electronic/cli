@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (C) 2015 AEA s.r.l. Loccioni Group - Elctronic Design Dept.
+ * Copyright (C) 2015-2016 AEA s.r.l. Loccioni Group - Elctronic Design Dept.
  *
  * Authors:
  *  Marco Giammarini <m.giammarini@loccioni.com>
@@ -71,7 +71,13 @@ static Uart_Config Cli_uartConfig = {
 
     .baudrate = LOCCIONI_CLI_BAUDRATE,
 
+#if defined (LIBOHIBOARD_KL03Z4)     || \
+    defined (LIBOHIBOARD_FRDMKL03Z)  || \
+	defined (LIBOHIBOARD_KL15Z4)     || \
+	defined (LIBOHIBOARD_KL25Z4)     || \
+	defined (LIBOHIBOARD_FRDMKL25Z)
     .oversampling = 16,
+#endif
 };
 
 
@@ -290,7 +296,13 @@ void Cli_check(void)
 
 void Cli_init(void)
 {
+#if defined (LIBOHIBOARD_K12D5)      || \
+    defined (LIBOHIBOARD_K64F12)     || \
+    defined (LIBOHIBOARD_FRDMK64F)
+    Uart_open (LOCCIONI_CLI_DEV, &Cli_uartConfig);
+#else
     Uart_open (LOCCIONI_CLI_DEV, 0, &Cli_uartConfig);
+#endif
 
     Cli_sayHello();
 
