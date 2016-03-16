@@ -37,10 +37,10 @@
  */
 #include "board.h"
 
-#define LOCCIONI_CLI_LIBRARY_VERSION     "1.1"
+#define LOCCIONI_CLI_LIBRARY_VERSION     "1.2"
 #define LOCCIONI_CLI_LIBRARY_VERSION_M   1
-#define LOCCIONI_CLI_LIBRARY_VERSION_m   1
-#define LOCCIONI_CLI_LIBRARY_TIME        0
+#define LOCCIONI_CLI_LIBRARY_VERSION_m   2
+#define LOCCIONI_CLI_LIBRARY_TIME        1458150158
 
 /* Public define */
 #define LOCCIONI_CLI_BUFFER_SIZE         50
