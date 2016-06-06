@@ -63,6 +63,6 @@ void Cli_addModule(char* name,
                    void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]));
 
 void Cli_sendHelpString(char* name, char* description);
-void Cli_sendStatusString(char* name, char* value);
+void Cli_sendStatusString(char* name, char* value, char* other);
 
 #endif /* __CLI_LOCCIONI_H */

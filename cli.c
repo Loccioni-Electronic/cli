@@ -335,3 +335,26 @@ void Cli_sendHelpString(char* name, char* description)
     Uart_putChar(LOCCIONI_CLI_DEV,';');
     Uart_sendStringln(LOCCIONI_CLI_DEV,description);
 }
+
+void Cli_sendStatusString(char* name, char* value, char* other)
+{
+    uint8_t i;
+    uint8_t blank;
+
+    blank = CLI_MAX_CMD_CHAR_LINE - strlen(name) - 2;
+    Uart_sendString(LOCCIONI_CLI_DEV,name);
+    for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
+    Uart_putChar(LOCCIONI_CLI_DEV,':');
+    Uart_putChar(LOCCIONI_CLI_DEV,' ');
+
+    if (other)
+    {
+        Uart_sendString(LOCCIONI_CLI_DEV,value);
+        Uart_putChar(LOCCIONI_CLI_DEV,' ');
+        Uart_sendStringln(LOCCIONI_CLI_DEV,other);
+    }
+    else
+    {
+        Uart_sendStringln(LOCCIONI_CLI_DEV,value);
+    }
+}
