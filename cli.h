@@ -37,10 +37,10 @@
  */
 #include "board.h"
 
-#define LOCCIONI_CLI_LIBRARY_VERSION     "1.2"
+#define LOCCIONI_CLI_LIBRARY_VERSION     "1.3"
 #define LOCCIONI_CLI_LIBRARY_VERSION_M   1
-#define LOCCIONI_CLI_LIBRARY_VERSION_m   2
-#define LOCCIONI_CLI_LIBRARY_TIME        1458150158
+#define LOCCIONI_CLI_LIBRARY_VERSION_m   3
+#define LOCCIONI_CLI_LIBRARY_TIME        1470148734
 
 /* Public define */
 #define LOCCIONI_CLI_BUFFER_SIZE         50
@@ -64,5 +64,6 @@ void Cli_addModule(char* name,
 
 void Cli_sendHelpString(char* name, char* description);
 void Cli_sendStatusString(char* name, char* value, char* other);
+void Cli_sendString(char* text);
 
 #endif /* __CLI_LOCCIONI_H */

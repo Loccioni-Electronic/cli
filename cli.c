@@ -358,3 +358,12 @@ void Cli_sendStatusString(char* name, char* value, char* other)
         Uart_sendStringln(LOCCIONI_CLI_DEV,value);
     }
 }
+
+void Cli_sendString(char* text)
+{
+    uint8_t i;
+    uint8_t blank;
+
+    Uart_sendString(LOCCIONI_CLI_DEV,"  "); /* Blank space before command */
+    Uart_sendStringln(LOCCIONI_CLI_DEV,text);
+}
