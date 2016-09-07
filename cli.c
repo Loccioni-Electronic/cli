@@ -33,7 +33,7 @@
 
 #define CLI_MAX_EXTERNAL_MODULE      20
 #define CLI_MAX_CHARS_PER_LINE       60
-#define CLI_MAX_CMD_CHAR_LINE        15
+#define CLI_MAX_CMD_CHAR_LINE        20
 #define CLI_MAX_STATUS_CHAR_LINE     10
 #define CLI_MAX_PARAM                10
 
@@ -341,7 +341,7 @@ void Cli_sendStatusString(char* name, char* value, char* other)
     uint8_t i;
     uint8_t blank;
 
-    blank = CLI_MAX_CMD_CHAR_LINE - strlen(name) - 2;
+    blank = CLI_MAX_CMD_CHAR_LINE - strlen(name);
     Uart_sendString(LOCCIONI_CLI_DEV,name);
     for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
     Uart_putChar(LOCCIONI_CLI_DEV,':');
@@ -361,9 +361,5 @@ void Cli_sendStatusString(char* name, char* value, char* other)
 
 void Cli_sendString(char* text)
 {
-    uint8_t i;
-    uint8_t blank;
-
-    Uart_sendString(LOCCIONI_CLI_DEV,"  "); /* Blank space before command */
     Uart_sendStringln(LOCCIONI_CLI_DEV,text);
 }
