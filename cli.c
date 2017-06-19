@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (C) 2015-2016 AEA s.r.l. Loccioni Group - Elctronic Design Dept.
+ * Copyright (C) 2015-2017 AEA s.r.l. Loccioni Group - Elctronic Design Dept.
  *
  * Authors:
  *  Marco Giammarini <m.giammarini@loccioni.com>
@@ -77,6 +77,14 @@ static Uart_Config Cli_uartConfig = {
 	defined (LIBOHIBOARD_KL25Z4)     || \
 	defined (LIBOHIBOARD_FRDMKL25Z)
     .oversampling = 16,
+#endif
+
+#if defined (LIBOHIBOARD_K64F12)     || \
+    defined (LIBOHIBOARD_KV31F12)
+
+    .callbackTx = 0,
+    .callbackRx = 0,
+
 #endif
 };
 
