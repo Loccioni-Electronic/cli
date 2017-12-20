@@ -31,9 +31,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define CLI_MAX_EXTERNAL_COMMAND     50
 #define CLI_MAX_EXTERNAL_MODULE      20
-#define CLI_MAX_CHARS_PER_LINE       60
-#define CLI_MAX_CMD_CHAR_LINE        20
+#define CLI_MAX_CHARS_PER_LINE       80
+#define CLI_MAX_CMD_CHAR_LINE        30
 #define CLI_MAX_STATUS_CHAR_LINE     10
 #define CLI_MAX_PARAM                10
 
@@ -47,15 +48,31 @@ static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BU
 static void Cli_functionVersion(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
 static void Cli_functionStatus(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
 
+typedef struct
+{
+    char *name;
+    char *description;
+    void *device;
+    void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
+} Cli_Command;
+
 const Cli_Command Cli_commandTable[] =
 {
-    {"help"   , "Print commands list", 0, Cli_functionHelp},
-    {"version", "Print actual version of board and firmware", 0, Cli_functionVersion},
-    {"status" , "Print microcontroller status", 0, Cli_functionStatus},
+    {"help"      , "Print commands list", 0, Cli_functionHelp},
+    {"version"   , "Print actual version of board and firmware", 0, Cli_functionVersion},
+    {"status"    , "Print microcontroller status", 0, Cli_functionStatus},
+#if LOCCIONI_CLI_ETHERNET == 1
+    {"netconfig" , "Set/Get network configurations", 0, Cli_networkConfiguration},
+#endif
+    {"save"      , "Save parameters into flash memory", 0, Cli_saveFlash},
+    {"reboot"    , "Reboot system", 0, Cli_reboot},
 };
 
-static Cli_Command Cli_externalCommandTable[CLI_MAX_EXTERNAL_MODULE];
+static Cli_Command Cli_externalCommandTable[CLI_MAX_EXTERNAL_COMMAND];
 static uint8_t Cli_externalCommandIndex = 0;
+
+static Cli_Command Cli_externalModuleTable[CLI_MAX_EXTERNAL_MODULE];
+static uint8_t Cli_externalModuleIndex = 0;
 
 #define CLI_COMMAND_TABLE_SIZED         (sizeof Cli_commandTable / sizeof Cli_commandTable[0])
 
@@ -88,7 +105,6 @@ static Uart_Config Cli_uartConfig = {
 #endif
 };
 
-
 static void Cli_getCommand (char* name, Cli_Command* cmdFound)
 {
     Cli_Command cmd = {name, NULL, NULL};
@@ -96,7 +112,7 @@ static void Cli_getCommand (char* name, Cli_Command* cmdFound)
 
     for (i = 0; i < CLI_COMMAND_TABLE_SIZED; i++)
     {
-        if(strncmp(name, Cli_commandTable[i].name, strlen(Cli_commandTable[i].name)) == 0)
+        if (strncmp(name, Cli_commandTable[i].name, strlen(Cli_commandTable[i].name)) == 0)
         {
             cmdFound->name        = Cli_commandTable[i].name;
             cmdFound->description = Cli_commandTable[i].description;
@@ -108,12 +124,24 @@ static void Cli_getCommand (char* name, Cli_Command* cmdFound)
 
     for (i = 0; i < Cli_externalCommandIndex; i++)
     {
-        if(strncmp(name, Cli_externalCommandTable[i].name, strlen(Cli_externalCommandTable[i].name)) == 0)
+        if (strncmp(name, Cli_externalCommandTable[i].name, strlen(Cli_externalCommandTable[i].name)) == 0)
         {
             cmdFound->name        = Cli_externalCommandTable[i].name;
             cmdFound->description = Cli_externalCommandTable[i].description;
             cmdFound->cmdFunction = Cli_externalCommandTable[i].cmdFunction;
-            cmdFound->device      = Cli_externalCommandTable[i].device;
+            cmdFound->device      = 0;
+            return;
+        }
+    }
+
+    for (i = 0; i < Cli_externalModuleIndex; i++)
+    {
+        if (strncmp(name, Cli_externalModuleTable[i].name, strlen(Cli_externalModuleTable[i].name)) == 0)
+        {
+            cmdFound->name        = Cli_externalModuleTable[i].name;
+            cmdFound->description = Cli_externalModuleTable[i].description;
+            cmdFound->cmdFunction = Cli_externalModuleTable[i].cmdFunction;
+            cmdFound->device      = Cli_externalModuleTable[i].device;
             return;
         }
     }
@@ -121,7 +149,7 @@ static void Cli_getCommand (char* name, Cli_Command* cmdFound)
     cmdFound = 0;
 }
 
-static void Cli_prompt(void)
+static void Cli_prompt (void)
 {
     Uart_sendString(LOCCIONI_CLI_DEV, "\r\n$> ");
     memset(Cli_buffer, 0, sizeof(Cli_buffer));
@@ -146,7 +174,7 @@ static void Cli_sayHello (void)
     Uart_sendString(LOCCIONI_CLI_DEV, "\r\n");
 }
 
-static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
+static void Cli_functionHelp (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
     uint8_t i,j;
     uint8_t blank = 0;
@@ -162,6 +190,7 @@ static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BU
         Uart_sendStringln(LOCCIONI_CLI_DEV,Cli_commandTable[i].description);
     }
 
+    // Print external command
     for (i = 0; i < Cli_externalCommandIndex; i++)
     {
         blank = CLI_MAX_CMD_CHAR_LINE - strlen(Cli_externalCommandTable[i].name);
@@ -169,13 +198,23 @@ static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BU
         for (j=0; j < blank; ++j) Uart_putChar(LOCCIONI_CLI_DEV,' ');
         Uart_putChar(LOCCIONI_CLI_DEV,';');
         Uart_sendStringln(LOCCIONI_CLI_DEV,Cli_externalCommandTable[i].description);
+    }
 
-        /* Print help menu of the device! */
-        Cli_externalCommandTable[i].cmdFunction(Cli_externalCommandTable[i].device,1,0);
+    // Print external module and sub command
+    for (i = 0; i < Cli_externalModuleIndex; i++)
+    {
+        blank = CLI_MAX_CMD_CHAR_LINE - strlen(Cli_externalModuleTable[i].name);
+        Uart_sendString(LOCCIONI_CLI_DEV,Cli_externalModuleTable[i].name);
+        for (j=0; j < blank; ++j) Uart_putChar(LOCCIONI_CLI_DEV,' ');
+        Uart_putChar(LOCCIONI_CLI_DEV,';');
+        Uart_sendStringln(LOCCIONI_CLI_DEV,Cli_externalModuleTable[i].description);
+
+        // Print help menu of the module!
+        Cli_externalModuleTable[i].cmdFunction(Cli_externalModuleTable[i].device,1,0);
     }
 }
 
-static void Cli_functionVersion(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
+static void Cli_functionVersion (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
     uint8_t i,blank = 0;
     char dateString[26];
@@ -200,7 +239,7 @@ static void Cli_functionVersion(void* device, int argc, char argv[][LOCCIONI_CLI
     Uart_sendStringln(LOCCIONI_CLI_DEV,dateString);
 }
 
-static void Cli_functionStatus(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
+static void Cli_functionStatus (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
     uint8_t i;
 
@@ -213,7 +252,62 @@ static void Cli_functionStatus(void* device, int argc, char argv[][LOCCIONI_CLI_
     Cli_functionVersion(0,0,0);
 }
 
-static void Cli_parseParams(void)
+#if LOCCIONI_CLI_ETHERNET == 1
+static void Cli_networkConfiguration (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
+{
+    if ((argc == 1) && (argv == 0))
+    {
+        Cli_sendHelpString("ip|gw|mask x.x.x.x","Set ip|gw|mask address");
+        Cli_sendHelpString("mac y:y:y:y:y:y","Set mac address");
+        Cli_sendHelpString("show","Show network configuration");
+        return;
+    }
+
+    if ((argc == 2) && (strcmp(argv[1], "show") == 0))
+    {
+
+    }
+
+    if (argc == 3)
+    {
+        if (strcmp(argv[1], "ip") == 0)
+        {
+
+        }
+
+        if (strcmp(argv[1], "gw") == 0)
+        {
+
+        }
+
+        if (strcmp(argv[1], "mask") == 0)
+        {
+
+        }
+
+        if (strcmp(argv[1], "mac") == 0)
+        {
+
+        }
+    }
+}
+#endif
+
+static void Cli_saveFlash (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
+{
+
+}
+
+static void Cli_reboot (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
+{
+    if (argc != 1)
+          return;
+
+    Cli_sendString("Reboot...");
+    NVIC_SystemReset();
+}
+
+static void Cli_parseParams (void)
 {
     uint8_t i = 0; /* counter for the buffer */
     uint8_t j = 0; /* counter for each param */
@@ -257,7 +351,7 @@ static void Cli_parseParams(void)
     Cli_numberOfParams++; /* The last param that can not see! */
 }
 
-void Cli_check(void)
+void Cli_check (void)
 {
     Cli_Command cmd = {NULL, NULL, NULL, NULL};
     char c;
@@ -302,7 +396,7 @@ void Cli_check(void)
 	}
 }
 
-void Cli_init(void)
+void Cli_init (void)
 {
     Uart_open (LOCCIONI_CLI_DEV, &Cli_uartConfig);
 
@@ -314,24 +408,40 @@ void Cli_init(void)
     Cli_prompt();
 }
 
-void Cli_addModule(char* name,
-                   char* description,
-                   void* device,
-                   void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]))
+void Cli_addModule (char* name,
+                    char* description,
+                    void* device,
+                    void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]))
 {
-    if (Cli_externalCommandIndex < CLI_MAX_EXTERNAL_MODULE)
+    if (Cli_externalModuleIndex < CLI_MAX_EXTERNAL_MODULE)
+    {
+        Cli_externalModuleTable[Cli_externalModuleIndex].name = name;
+        Cli_externalModuleTable[Cli_externalModuleIndex].description = description;
+
+        Cli_externalModuleTable[Cli_externalModuleIndex].device = device;
+        Cli_externalModuleTable[Cli_externalModuleIndex].cmdFunction = cmdFunction;
+
+        Cli_externalModuleIndex++;
+    }
+}
+
+void Cli_addCommand (char* name,
+                     char* description,
+                     void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]))
+{
+    if (Cli_externalCommandIndex < CLI_MAX_EXTERNAL_COMMAND)
     {
         Cli_externalCommandTable[Cli_externalCommandIndex].name = name;
         Cli_externalCommandTable[Cli_externalCommandIndex].description = description;
 
-        Cli_externalCommandTable[Cli_externalCommandIndex].device = device;
+        Cli_externalCommandTable[Cli_externalCommandIndex].device = 0;
         Cli_externalCommandTable[Cli_externalCommandIndex].cmdFunction = cmdFunction;
 
         Cli_externalCommandIndex++;
     }
 }
 
-void Cli_sendHelpString(char* name, char* description)
+void Cli_sendHelpString (char* name, char* description)
 {
     uint8_t i;
     uint8_t blank;
@@ -344,7 +454,7 @@ void Cli_sendHelpString(char* name, char* description)
     Uart_sendStringln(LOCCIONI_CLI_DEV,description);
 }
 
-void Cli_sendStatusString(char* name, char* value, char* other)
+void Cli_sendStatusString (char* name, char* value, char* other)
 {
     uint8_t i;
     uint8_t blank;
@@ -367,7 +477,7 @@ void Cli_sendStatusString(char* name, char* value, char* other)
     }
 }
 
-void Cli_sendString(char* text)
+void Cli_sendString (char* text)
 {
     Uart_sendStringln(LOCCIONI_CLI_DEV,text);
 }

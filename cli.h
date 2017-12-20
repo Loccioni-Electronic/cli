@@ -34,25 +34,21 @@
  *     #define LOCCIONI_CLI_RX_PIN     UART_PINS_PTxx
  *     #define LOCCIONI_CLI_TX_PIN     UART_PINS_PTxx
  *     #define LOCCIONI_CLI_BAUDRATE   115200
+ *
+ *     #define LOCCIONI_CLI_ETHERNET   1/0
  */
+#ifndef __NO_BOARD_H
 #include "board.h"
+#endif
 
-#define LOCCIONI_CLI_LIBRARY_VERSION     "1.4"
+#define LOCCIONI_CLI_LIBRARY_VERSION     "1.4.0"
 #define LOCCIONI_CLI_LIBRARY_VERSION_M   1
 #define LOCCIONI_CLI_LIBRARY_VERSION_m   4
+#define LOCCIONI_CLI_LIBRARY_VERSION_bug 0
 #define LOCCIONI_CLI_LIBRARY_TIME        1497865040
 
 /* Public define */
 #define LOCCIONI_CLI_BUFFER_SIZE         50
-
-
-typedef struct
-{
-    char *name;
-    char *description;
-    void *device;
-    void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
-} Cli_Command;
 
 void Cli_init(void);
 void Cli_check(void);
@@ -61,6 +57,10 @@ void Cli_addModule(char* name,
                    char* description,
                    void* device,
                    void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]));
+
+void Cli_addCommand(char* name,
+                    char* description,
+                    void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]));
 
 void Cli_sendHelpString(char* name, char* description);
 void Cli_sendStatusString(char* name, char* value, char* other);
