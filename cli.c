@@ -38,15 +38,25 @@
 #define CLI_MAX_STATUS_CHAR_LINE     10
 #define CLI_MAX_PARAM                10
 
+// Usefull define for standard command
+char* Cli_wrongCmd    = "ERR: Unrecognized command";
+char* Cli_wrongParam  = "ERR: Wrong parameters";
+char* Cli_doneCmd     = "Command done!";
+
 static char Cli_buffer[LOCCIONI_CLI_BUFFER_SIZE];
 static uint8_t Cli_bufferIndex = 0;
 
 static char Cli_params[CLI_MAX_PARAM][LOCCIONI_CLI_BUFFER_SIZE];
 static uint8_t Cli_numberOfParams = 0;
 
+static char Cli_statusBuffer[LOCCIONI_CLI_BUFFER_SIZE];
+
 static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
 static void Cli_functionVersion(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
 static void Cli_functionStatus(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
+static void Cli_networkConfiguration (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
+static void Cli_saveFlash (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
+static void Cli_reboot (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
 
 typedef struct
 {
@@ -157,7 +167,6 @@ static void Cli_prompt (void)
     Cli_bufferIndex = 0;
 }
 
-
 static void Cli_sayHello (void)
 {
     uint8_t i = 0;
@@ -253,9 +262,25 @@ static void Cli_functionStatus (void* device, int argc, char argv[][LOCCIONI_CLI
 }
 
 #if LOCCIONI_CLI_ETHERNET == 1
+
+static uint8_t* Cli_ipAddress      = 0;
+static uint8_t* Cli_gatewayAddress = 0;
+static uint8_t* Cli_maskAddress    = 0;
+static uint8_t* Cli_macAddress     = 0;
+
+void Cli_setNetworkMemoryArray (uint8_t* ip, uint8_t* mask, uint8_t* gw, uint8_t* mac)
+{
+    Cli_ipAddress = ip;
+    Cli_gatewayAddress = gw;
+    Cli_maskAddress = mask;
+    Cli_macAddress = mac;
+}
+
 static void Cli_networkConfiguration (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
-    if ((argc == 1) && (argv == 0))
+    uint8_t tmp[6];
+
+    if (argc == 1)
     {
         Cli_sendHelpString("ip|gw|mask x.x.x.x","Set ip|gw|mask address");
         Cli_sendHelpString("mac y:y:y:y:y:y","Set mac address");
@@ -265,31 +290,140 @@ static void Cli_networkConfiguration (void* device, int argc, char argv[][LOCCIO
 
     if ((argc == 2) && (strcmp(argv[1], "show") == 0))
     {
+        sprintf(Cli_statusBuffer,
+                "%d.%d.%d.%d",
+                Cli_ipAddress[0],
+                Cli_ipAddress[1],
+                Cli_ipAddress[2],
+                Cli_ipAddress[3]);
+        Cli_sendStatusString("ip",Cli_statusBuffer,0);
 
+        sprintf(Cli_statusBuffer,
+                "%d.%d.%d.%d",
+                Cli_gatewayAddress[0],
+                Cli_gatewayAddress[1],
+                Cli_gatewayAddress[2],
+                Cli_gatewayAddress[3]);
+        Cli_sendStatusString("gateway",Cli_statusBuffer,0);
+
+        sprintf(Cli_statusBuffer,
+                "%d.%d.%d.%d",
+                Cli_maskAddress[0],
+                Cli_maskAddress[1],
+                Cli_maskAddress[2],
+                Cli_maskAddress[3]);
+        Cli_sendStatusString("mask",Cli_statusBuffer,0);
+
+        sprintf(Cli_statusBuffer,
+                "%02X:%02X:%02X:%02X:%02X:%02X",
+                Cli_macAddress[0],
+                Cli_macAddress[1],
+                Cli_macAddress[2],
+                Cli_macAddress[3],
+                Cli_macAddress[4],
+                Cli_macAddress[5]);
+        Cli_sendStatusString("mac",Cli_statusBuffer,0);
+        return;
     }
 
     if (argc == 3)
     {
         if (strcmp(argv[1], "ip") == 0)
         {
+            if (Utility_isValidIp4Address(argv[2]))
+            {
+                sscanf(argv[2],
+                       "%d.%d.%d.%d",
+                       &tmp[0],
+                       &tmp[1],
+                       &tmp[2],
+                       &tmp[3]);
 
+                for (uint8_t i = 0; i < 4; ++i) Cli_ipAddress[i] = tmp[i];
+
+                LOCCIONI_CLI_DONECMD();
+                return;
+            }
+            else
+            {
+                LOCCIONI_CLI_WRONGPARAM();
+                return;
+            }
         }
 
         if (strcmp(argv[1], "gw") == 0)
         {
+            if (Utility_isValidIp4Address(argv[2]))
+            {
+                sscanf(argv[2],
+                       "%d.%d.%d.%d",
+                       &tmp[0],
+                       &tmp[1],
+                       &tmp[2],
+                       &tmp[3]);
 
+                for (uint8_t i = 0; i < 4; ++i) Cli_gatewayAddress[i] = tmp[i];
+
+                LOCCIONI_CLI_DONECMD();
+                return;
+            }
+            else
+            {
+                LOCCIONI_CLI_WRONGPARAM();
+                return;
+            }
         }
 
         if (strcmp(argv[1], "mask") == 0)
         {
+            if (Utility_isValidIp4Address(argv[2]))
+            {
+                sscanf(argv[2],
+                       "%d.%d.%d.%d",
+                       &tmp[0],
+                       &tmp[1],
+                       &tmp[2],
+                       &tmp[3]);
 
+                for (uint8_t i = 0; i < 4; ++i) Cli_maskAddress[i] = tmp[i];
+
+                LOCCIONI_CLI_DONECMD();
+                return;
+            }
+            else
+            {
+                LOCCIONI_CLI_WRONGPARAM();
+                return;
+            }
         }
 
         if (strcmp(argv[1], "mac") == 0)
         {
+            if (Utility_isValidMacAddress(argv[2]))
+            {
+                sscanf(argv[2],
+                       "%d:%d:%d:%d:%d:%d",
+                       &tmp[0],
+                       &tmp[1],
+                       &tmp[2],
+                       &tmp[3],
+                       &tmp[4],
+                       &tmp[5]);
 
+                for (uint8_t i = 0; i < 6; ++i) Cli_macAddress[i] = tmp[i];
+
+                LOCCIONI_CLI_DONECMD();
+                return;
+            }
+            else
+            {
+                LOCCIONI_CLI_WRONGPARAM();
+                return;
+            }
         }
     }
+
+    LOCCIONI_CLI_WRONGCMD();
 }
 #endif
 

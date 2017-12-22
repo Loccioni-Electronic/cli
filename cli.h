@@ -50,20 +50,32 @@
 /* Public define */
 #define LOCCIONI_CLI_BUFFER_SIZE         50
 
-void Cli_init(void);
-void Cli_check(void);
+extern char* Cli_wrongCmd;
+extern char* Cli_wrongParam;
+extern char* Cli_doneCmd;
 
-void Cli_addModule(char* name,
-                   char* description,
-                   void* device,
-                   void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]));
+#define LOCCIONI_CLI_WRONGCMD()           Cli_sendString(Cli_wrongCmd)
+#define LOCCIONI_CLI_WRONGPARAM()         Cli_sendString(Cli_wrongParam)
+#define LOCCIONI_CLI_DONECMD()            Cli_sendString(Cli_doneCmd)
 
-void Cli_addCommand(char* name,
+void Cli_init (void);
+void Cli_check (void);
+
+void Cli_addModule (char* name,
                     char* description,
+                    void* device,
                     void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]));
 
-void Cli_sendHelpString(char* name, char* description);
-void Cli_sendStatusString(char* name, char* value, char* other);
-void Cli_sendString(char* text);
+void Cli_addCommand (char* name,
+                     char* description,
+                     void (*cmdFunction)(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]));
+
+void Cli_sendHelpString (char* name, char* description);
+void Cli_sendStatusString (char* name, char* value, char* other);
+void Cli_sendString (char* text);
+
+#if LOCCIONI_CLI_ETHERNET == 1
+void Cli_setNetworkMemoryArray (uint8_t* ip, uint8_t* mask, uint8_t* gw, uint8_t* mac);
+#endif
 
 #endif /* __CLI_LOCCIONI_H */
