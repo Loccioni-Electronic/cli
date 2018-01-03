@@ -1,9 +1,10 @@
 /******************************************************************************
- * Copyright (C) 2015-2017 AEA s.r.l. Loccioni Group - Elctronic Design Dept.
+ * Copyright (C) 2015-2018 AEA s.r.l. Loccioni Group - Elctronic Design Dept.
  *
  * Authors:
  *  Marco Giammarini <m.giammarini@loccioni.com>
  *  Alessio Paolucci <a.paolucci89@gmail.com>
+ *  Matteo Piersantelli
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +38,10 @@
 #define CLI_MAX_CMD_CHAR_LINE        30
 #define CLI_MAX_STATUS_CHAR_LINE     10
 #define CLI_MAX_PARAM                10
+
+#define CLI_BOARD_STRING             "Board"
+#define CLI_FIRMWARE_STRING          "Firmware"
+
 
 // Usefull define for standard command
 char* Cli_wrongCmd    = "ERR: Unrecognized command";
@@ -229,8 +234,8 @@ static void Cli_functionVersion (void* device, int argc, char argv[][LOCCIONI_CL
     char dateString[26];
 
     /* Board version */
-    blank = CLI_MAX_STATUS_CHAR_LINE - strlen("Board");
-    Uart_sendString(LOCCIONI_CLI_DEV,"Board");
+    blank = CLI_MAX_STATUS_CHAR_LINE - strlen(CLI_BOARD_STRING);
+    Uart_sendString(LOCCIONI_CLI_DEV,CLI_BOARD_STRING);
     for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
     Uart_putChar(LOCCIONI_CLI_DEV,':');
     Uart_putChar(LOCCIONI_CLI_DEV,' ');
@@ -238,8 +243,8 @@ static void Cli_functionVersion (void* device, int argc, char argv[][LOCCIONI_CL
 
     /* Firmware version */
     Time_unixtimeToString(FW_TIME_VERSION,dateString);
-    blank = CLI_MAX_STATUS_CHAR_LINE - strlen("Firmware");
-    Uart_sendString(LOCCIONI_CLI_DEV,"Firmware");
+    blank = CLI_MAX_STATUS_CHAR_LINE - strlen(CLI_FIRMWARE_STRING);
+    Uart_sendString(LOCCIONI_CLI_DEV,CLI_FIRMWARE_STRING);
     for (i=0; i < blank; ++i) Uart_putChar(LOCCIONI_CLI_DEV,' ');
     Uart_putChar(LOCCIONI_CLI_DEV,':');
     Uart_putChar(LOCCIONI_CLI_DEV,' ');
@@ -493,6 +498,18 @@ void Cli_check (void)
     if (Uart_isCharPresent(LOCCIONI_CLI_DEV))
     {
     	Uart_getChar(LOCCIONI_CLI_DEV, &c);
+    	// When buffer is grather then 0, delete one char
+    	if ((c == '\b') && (Cli_bufferIndex > 0))
+    	{
+    	    Cli_bufferIndex--;
+    	    return;
+    	}
+    	// When no chars into buffer, return to main function
+    	else if ((c == '\b') && (Cli_bufferIndex == 0))
+    	{
+    	    return;
+    	}
+
     	Cli_buffer[Cli_bufferIndex++] = c;
     }
 
