@@ -432,9 +432,21 @@ static void Cli_networkConfiguration (void* device, int argc, char argv[][LOCCIO
 }
 #endif
 
+static System_Errors (*Cli_saveCallbackFunction)(void) = 0;
+
+void Cli_saveCallback (System_Errors (*saveCallback)(void))
+{
+    Cli_saveCallbackFunction = saveCallback;
+}
+
 static void Cli_saveFlash (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
 {
+    if (argc != 1)
+          return;
 
+    Cli_sendString("Saving parameters...");
+    Cli_saveCallbackFunction();
+    Cli_sendString("Reboot necessary!");
 }
 
 static void Cli_reboot (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE])
@@ -442,7 +454,7 @@ static void Cli_reboot (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_
     if (argc != 1)
           return;
 
-    Cli_sendString("Reboot...");
+    Cli_sendString("Reboot...\r\n");
     NVIC_SystemReset();
 }
 

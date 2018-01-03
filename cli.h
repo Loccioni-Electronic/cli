@@ -75,6 +75,12 @@ void Cli_sendHelpString (char* name, char* description);
 void Cli_sendStatusString (char* name, char* value, char* other);
 void Cli_sendString (char* text);
 
+/**
+ *
+ * @param saveCallback User callback to save data into memory
+ */
+void Cli_saveCallback (System_Errors (*saveCallback)(void));
+
 #if LOCCIONI_CLI_ETHERNET == 1
 void Cli_setNetworkMemoryArray (uint8_t* ip, uint8_t* mask, uint8_t* gw, uint8_t* mac);
 #endif
