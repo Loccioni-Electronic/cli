@@ -26,6 +26,23 @@
  *
  ******************************************************************************/
 
+/******************************************************************************
+ * @mainpage CLI interface based on @a libohiboard
+ *
+ * @section changelog ChangeLog
+ *
+ * @li v1.5.0 of 2018/01/xx - Added addCommand function, added network
+ * configuration, added save and reboot command, added sendMessage function.
+ *
+ * @section library External Library
+ *
+ * The library use the following external library
+ * @li libohiboard https://github.com/ohilab/libohiboard a C framework for
+ * NXP Kinetis microcontroller
+ *
+ *
+ ******************************************************************************/
+
 #ifndef __LOCCIONI_CLI_H
 #define __LOCCIONI_CLI_H
 
@@ -75,6 +92,20 @@ void Cli_sendHelpString (char* name, char* description);
 void Cli_sendStatusString (char* name, char* value, char* other);
 void Cli_sendString (char* text);
 
+typedef enum
+{
+    CLI_MESSAGETYPE_INFO,
+    CLI_MESSAGETYPE_WARNING,
+    CLI_MESSAGETYPE_ERROR,
+} Cli_MessageType;
+
+/**
+ * @param who String that contain the name of message sender
+ * @param message String that contains the message
+ * @param type The type of the message: INFO, WARNING or ERROR
+ */
+void Cli_sendMessage (char* who, char* message, Cli_MessageType type);
+
 /**
  *
  * @param saveCallback User callback to save data into memory
@@ -84,5 +115,8 @@ void Cli_saveCallback (System_Errors (*saveCallback)(void));
 #if LOCCIONI_CLI_ETHERNET == 1
 void Cli_setNetworkMemoryArray (uint8_t* ip, uint8_t* mask, uint8_t* gw, uint8_t* mac);
 #endif
+
+void Cli_setConfigMode (bool config);
+bool Cli_isConfigMode (void);
 
 #endif /* __CLI_LOCCIONI_H */

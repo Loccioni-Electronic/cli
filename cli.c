@@ -44,9 +44,10 @@
 
 
 // Usefull define for standard command
-char* Cli_wrongCmd    = "ERR: Unrecognized command";
-char* Cli_wrongParam  = "ERR: Wrong parameters";
-char* Cli_doneCmd     = "Command done!";
+char* Cli_wrongCmd      = "ERR: Unrecognized command";
+char* Cli_wrongParam    = "ERR: Wrong parameters";
+char* Cli_doneCmd       = "Command done!";
+char* Cli_notConfigMode = "ERR: You are not in configuration mode!";
 
 static char Cli_buffer[LOCCIONI_CLI_BUFFER_SIZE];
 static uint8_t Cli_bufferIndex = 0;
@@ -55,6 +56,12 @@ static char Cli_params[CLI_MAX_PARAM][LOCCIONI_CLI_BUFFER_SIZE];
 static uint8_t Cli_numberOfParams = 0;
 
 static char Cli_statusBuffer[LOCCIONI_CLI_BUFFER_SIZE];
+
+/**
+ * This variable is used to store current CLI status: TRUE when configuration mode is
+ * selected, FALSE for application mode.
+ */
+static bool Cli_configMode = FALSE;
 
 static void Cli_functionHelp(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
 static void Cli_functionVersion(void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_SIZE]);
@@ -287,8 +294,11 @@ static void Cli_networkConfiguration (void* device, int argc, char argv[][LOCCIO
 
     if (argc == 1)
     {
-        Cli_sendHelpString("ip|gw|mask x.x.x.x","Set ip|gw|mask address");
-        Cli_sendHelpString("mac y:y:y:y:y:y","Set mac address");
+        if (Cli_configMode)
+        {
+            Cli_sendHelpString("ip|gw|mask x.x.x.x","Set ip|gw|mask address");
+            Cli_sendHelpString("mac y:y:y:y:y:y","Set mac address");
+        }
         Cli_sendHelpString("show","Show network configuration");
         return;
     }
@@ -331,7 +341,8 @@ static void Cli_networkConfiguration (void* device, int argc, char argv[][LOCCIO
         return;
     }
 
-    if (argc == 3)
+    // The network can be configured only in debug mode
+    if ((argc == 3) && (Cli_configMode))
     {
         if (strcmp(argv[1], "ip") == 0)
         {
@@ -428,6 +439,12 @@ static void Cli_networkConfiguration (void* device, int argc, char argv[][LOCCIO
         }
     }
 
+    if (!Cli_configMode)
+    {
+        Uart_sendString(LOCCIONI_CLI_DEV,Cli_notConfigMode);
+        return;
+    }
+
     LOCCIONI_CLI_WRONGCMD();
 }
 #endif
@@ -444,6 +461,12 @@ static void Cli_saveFlash (void* device, int argc, char argv[][LOCCIONI_CLI_BUFF
     if (argc != 1)
           return;
 
+    if (!Cli_configMode)
+    {
+        Uart_sendString(LOCCIONI_CLI_DEV,Cli_notConfigMode);
+        return;
+    }
+
     Cli_sendString("Saving parameters...");
     Cli_saveCallbackFunction();
     Cli_sendString("Reboot necessary!");
@@ -453,6 +476,12 @@ static void Cli_reboot (void* device, int argc, char argv[][LOCCIONI_CLI_BUFFER_
 {
     if (argc != 1)
           return;
+
+    if (!Cli_configMode)
+    {
+        Uart_sendString(LOCCIONI_CLI_DEV,Cli_notConfigMode);
+        return;
+    }
 
     Cli_sendString("Reboot...\r\n");
     NVIC_SystemReset();
@@ -571,6 +600,16 @@ void Cli_init (void)
     Cli_prompt();
 }
 
+void Cli_setConfigMode (bool config)
+{
+    Cli_configMode = config;
+}
+
+bool Cli_isConfigMode (void)
+{
+    return Cli_configMode;
+}
+
 void Cli_addModule (char* name,
                     char* description,
                     void* device,
@@ -643,4 +682,24 @@ void Cli_sendStatusString (char* name, char* value, char* other)
 void Cli_sendString (char* text)
 {
     Uart_sendStringln(LOCCIONI_CLI_DEV,text);
+}
+
+void Cli_sendMessage (char* who, char* message, Cli_MessageType type)
+{
+    switch (type)
+    {
+    case CLI_MESSAGETYPE_INFO:
+        Uart_sendString(LOCCIONI_CLI_DEV,"INFO: ");
+        break;
+    case CLI_MESSAGETYPE_WARNING:
+        Uart_sendString(LOCCIONI_CLI_DEV,"WARNING: ");
+        break;
+    case CLI_MESSAGETYPE_ERROR:
+        Uart_sendString(LOCCIONI_CLI_DEV,"ERROR: ");
+        break;
+    }
+
+    Uart_sendString(LOCCIONI_CLI_DEV,who);
+    Uart_sendString(LOCCIONI_CLI_DEV,"> ");
+    Uart_sendStringln(LOCCIONI_CLI_DEV,message);
 }
