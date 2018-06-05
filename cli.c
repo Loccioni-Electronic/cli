@@ -32,12 +32,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef CLI_MAX_EXTERNAL_COMMAND
 #define CLI_MAX_EXTERNAL_COMMAND     50
+#endif
+#ifndef CLI_MAX_EXTERNAL_MODULE
 #define CLI_MAX_EXTERNAL_MODULE      20
+#endif
+#ifndef CLI_MAX_CHARS_PER_LINE
 #define CLI_MAX_CHARS_PER_LINE       80
+#endif
+#ifndef CLI_MAX_CMD_CHAR_LINE
 #define CLI_MAX_CMD_CHAR_LINE        30
+#endif
+#ifndef CLI_MAX_STATUS_CHAR_LINE
 #define CLI_MAX_STATUS_CHAR_LINE     10
+#endif
+#ifndef CLI_MAX_PARAM
 #define CLI_MAX_PARAM                10
+#endif
 
 #define CLI_BOARD_STRING             "Board"
 #define CLI_FIRMWARE_STRING          "Firmware"

@@ -66,7 +66,9 @@
 #define LOCCIONI_CLI_LIBRARY_TIME        1497865040
 
 /* Public define */
+#ifndef LOCCIONI_CLI_BUFFER_SIZE
 #define LOCCIONI_CLI_BUFFER_SIZE         50
+#endif
 
 extern char* Cli_wrongCmd;
 extern char* Cli_wrongParam;
